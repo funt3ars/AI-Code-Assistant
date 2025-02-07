@@ -1,49 +1,74 @@
+import { AtomaAgent } from './atoma-agent';
+import type { AgentResponse } from './types';
+
 export class SuiAgent {
     private static instance: SuiAgent;
-    private context: any;
+    private atomaAgent: AtomaAgent;
+    private bearerToken: string;
 
-    private constructor() {
-        this.context = {};
+    private constructor(bearerToken: string) {
+        this.bearerToken = bearerToken;
+        this.atomaAgent = new AtomaAgent(this.bearerToken);
     }
 
     public static getInstance(): SuiAgent {
         if (!SuiAgent.instance) {
-            SuiAgent.instance = new SuiAgent();
+            SuiAgent.instance = new SuiAgent(process.env.ATOMASDK_BEARER_AUTH || '');
         }
         return SuiAgent.instance;
     }
 
-    async processQuery(query: string, portfolioContext: any) {
+    async processQuery(query: string, portfolioContext: any): Promise<AgentResponse> {
         try {
-            // Store context for use in responses
-            this.context = {
-                ...portfolioContext,
-                timestamp: new Date().toISOString()
-            };
+            // Use Atoma's agent to process the query
+            const result = await this.atomaAgent.query({
+                prompt: query,
+                context: portfolioContext
+            });
 
-            // For now, return simulated responses based on keywords
-            if (query.toLowerCase().includes('price')) {
-                return {
-                    response: `The current SUI price is $${portfolioContext.suiPrice}. Your portfolio value is $${portfolioContext.totalValue}.`,
-                    updates: null
-                };
-            }
-
-            if (query.toLowerCase().includes('treasury')) {
-                return {
-                    response: `Your treasury contains ${portfolioContext.treasury.sui} SUI and $${portfolioContext.treasury.usdc} USDC.`,
-                    updates: null
-                };
-            }
-
-            // Default response
             return {
-                response: `I understand your query about "${query}". I'm analyzing your portfolio data to provide insights.`,
-                updates: null
+                reasoning: result.reasoning || 'Processing query',
+                response: result.response || 'No response available',
+                status: result.status || 'success',
+                query: query,
+                errors: result.errors || []
             };
         } catch (error) {
-            console.error('Sui Agent Error:', error);
-            throw error;
+            console.error('Atoma Agent Error:', error);
+            return {
+                reasoning: 'Error processing query',
+                response: (error as Error).message,
+                status: 'failure',
+                query: query,
+                errors: [(error as Error).message]
+            };
         }
     }
-} 
+
+    async SuperVisorAgent(query: string): Promise<any> {
+        try {
+            // Use Atoma's agent directly
+            const result = await this.atomaAgent.query({
+                prompt: query
+            });
+
+            return {
+                reasoning: result.reasoning || 'Query processed',
+                response: result.response,
+                status: 'success',
+                query: query,
+                errors: []
+            };
+        } catch (error) {
+            return {
+                reasoning: 'Error processing query',
+                response: (error as Error).message,
+                status: 'failure',
+                query: query,
+                errors: [(error as Error).message]
+            };
+        }
+    }
+}
+
+export default SuiAgent; 
