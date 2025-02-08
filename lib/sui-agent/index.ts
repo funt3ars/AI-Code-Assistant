@@ -7,13 +7,21 @@ export class SuiAgent {
     private bearerToken: string;
 
     private constructor(bearerToken: string) {
+        // Log the token being used (first 4 chars only for security)
+        console.log('SuiAgent initializing with token prefix:', bearerToken.substring(0, 4));
+
         this.bearerToken = bearerToken;
         this.atomaAgent = new AtomaAgent(this.bearerToken);
     }
 
     public static getInstance(): SuiAgent {
         if (!SuiAgent.instance) {
-            SuiAgent.instance = new SuiAgent(process.env.ATOMASDK_BEARER_AUTH || '');
+            // Try both environment variables
+            const token = process.env.NEXT_PUBLIC_ATOMASDK_BEARER_AUTH || process.env.ATOMASDK_BEARER_AUTH;
+            if (!token) {
+                throw new Error('ATOMASDK_BEARER_AUTH environment variable is not set');
+            }
+            SuiAgent.instance = new SuiAgent(token);
         }
         return SuiAgent.instance;
     }

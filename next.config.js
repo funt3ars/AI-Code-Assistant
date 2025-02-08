@@ -36,7 +36,6 @@ const nextConfig = {
   },
   // Increase timeout
   experimental: {
-    pageLoadTimeout: 60000, // 60 seconds
   }
 }
 
