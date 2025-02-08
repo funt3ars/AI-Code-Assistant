@@ -1,6 +1,7 @@
 import { StarsBackground } from "../components/stars-background"
 import { ThemeProvider } from "../components/theme-provider"
 import { WalletProvider } from "../components/wallet-provider"
+import { SWRProvider } from "../components/providers/swr-provider"
 import "./globals.css"
 import type React from "react"
 
@@ -17,12 +18,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <WalletProvider>
-          <ThemeProvider>
-            <StarsBackground />
-            {children}
-          </ThemeProvider>
-        </WalletProvider>
+        <SWRProvider>
+          <WalletProvider>
+            <ThemeProvider>
+              <StarsBackground />
+              {children}
+            </ThemeProvider>
+          </WalletProvider>
+        </SWRProvider>
       </body>
     </html>
   )

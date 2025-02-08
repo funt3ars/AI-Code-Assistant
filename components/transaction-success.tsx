@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
+import { CheckCircle2 } from "lucide-react"
 
 interface CheckmarkProps {
   size?: number
@@ -154,8 +155,8 @@ export function TransactionResult({
       )}
 
       <Card className={`${position === 'center'
-          ? 'w-[320px] relative'
-          : 'w-[320px]'
+        ? 'w-[320px] relative'
+        : 'w-[320px]'
         } p-4 bg-emerald-500/10 border-emerald-500/20 backdrop-blur-sm`}
       >
         <CardContent className="p-0 space-y-3">
@@ -207,4 +208,34 @@ export function TransactionResult({
       </Card>
     </motion.div>
   )
+}
+
+interface TransactionSuccessProps {
+  amount: string;
+  usdAmount: string;
+  onClose?: () => void;
+}
+
+export function TransactionSuccess({ amount, usdAmount, onClose }: TransactionSuccessProps) {
+  return (
+    <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-green-950/90 p-4 text-green-400 shadow-lg">
+      <CheckCircle2 className="h-5 w-5" />
+      <div className="flex flex-col">
+        <p className="text-sm font-medium">
+          Transaction Successful
+        </p>
+        <p className="text-xs text-green-300">
+          {amount} SUI (${usdAmount})
+        </p>
+      </div>
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="ml-4 text-green-300 hover:text-green-200"
+        >
+          View
+        </button>
+      )}
+    </div>
+  );
 } 

@@ -4,9 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useState, useRef, useEffect } from "react"
-import { Send, Bot, User, RefreshCw } from "lucide-react"
+import { Send, Bot, User, RefreshCw, MessageSquare, Crown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SuiAgent } from "@/lib/sui-agent"
+import { useWalletKit } from '@mysten/wallet-kit'
+import { TransactionBlock } from '@mysten/sui.js/transactions'
+import { TransactionHelper } from '@/lib/sui/transaction-helper'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -29,13 +32,15 @@ export function AIPortfolioChat({ data }: AIPortfolioChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I\'m your Sui portfolio assistant. How can I help you today?',
+      content: 'Hello! How can I help you today?',
       timestamp: new Date()
     }
   ])
   const [input, setInput] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { currentAccount, signAndExecuteTransactionBlock } = useWalletKit()
+  const transactionHelper = new TransactionHelper()
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -43,10 +48,62 @@ export function AIPortfolioChat({ data }: AIPortfolioChatProps) {
     }
   }, [messages])
 
+  const handleTransaction = async (tx: TransactionBlock) => {
+    try {
+      if (!currentAccount?.address) {
+        throw new Error('Please connect your wallet first')
+      }
+
+      // Add pending message
+      const pendingMessage: Message = {
+        role: 'assistant',
+        content: 'Processing transaction...',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, pendingMessage])
+
+      // Execute transaction
+      const result = await signAndExecuteTransactionBlock({
+        transactionBlock: tx,
+        chain: 'mainnet',
+        options: {
+          showInput: true,
+          showEffects: true,
+          showEvents: true,
+        }
+      })
+
+      if (result.effects?.status?.status === 'success') {
+        const successMessage = {
+          role: 'assistant',
+          content: `Transaction successful!\nDigest: ${result.digest.substring(0, 10)}...\nGas used: ${result.effects.gasUsed.computationCost} MIST`,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, successMessage])
+      } else {
+        throw new Error('Transaction failed: ' + result.effects?.status?.error)
+      }
+
+      return result
+    } catch (error) {
+      console.error('Transaction failed:', error)
+      const errorMessage = {
+        role: 'assistant',
+        content: `Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+      throw error
+    }
+  }
+
   const processQuery = async (query: string) => {
     try {
-      setIsProcessing(true)
+      if (!currentAccount?.address) {
+        throw new Error('Please connect your wallet first')
+      }
 
+      // Add user message
       const userMessage: Message = {
         role: 'user',
         content: query,
@@ -54,33 +111,40 @@ export function AIPortfolioChat({ data }: AIPortfolioChatProps) {
       }
       setMessages(prev => [...prev, userMessage])
 
-      // Use the Sui Agent
-      const agent = SuiAgent.getInstance();
-      const result = await agent.processQuery(query, {
-        suiPrice: data.suiPrice,
-        totalValue: data.totalPortfolioValue,
-        treasury: {
-          usdc: data.treasuryUSDC,
-          sui: data.treasurySUI
-        }
-      });
+      const response = await fetch('/api/sui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: query,
+          context: {
+            walletAddress: currentAccount.address,
+            connected: true,
+            suiPrice: data.suiPrice
+          }
+        })
+      })
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: result.response,
-        timestamp: new Date()
+      const result = await response.json()
+
+      if (result.transaction) {
+        await handleTransaction(result.transaction)
+      } else {
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: result.response,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, assistantMessage])
       }
-      setMessages(prev => [...prev, assistantMessage])
 
       if (result.updates) {
         data.updateHubInfo(result.updates)
       }
-
     } catch (error) {
-      console.error('Error processing query:', error)
+      console.error('Error:', error)
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        content: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -99,12 +163,18 @@ export function AIPortfolioChat({ data }: AIPortfolioChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-2">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          AI Assistant
-        </h2>
+    <div className="flex h-full flex-col">
+      {/* Chat Header */}
+      <div className="border-b border-gray-800 p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+            <MessageSquare className="h-4 w-4 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold">Midas Rex</h2>
+            <p className="text-xs text-gray-400">Your Sui Portfolio Assistant</p>
+          </div>
+        </div>
       </div>
 
       <ScrollArea ref={scrollRef} className="flex-1 p-4">
