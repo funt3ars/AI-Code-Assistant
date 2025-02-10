@@ -50,7 +50,7 @@ export default function HubPage() {
         <StarsBackground />
         <div className="flex flex-col items-center justify-center w-full relative z-10 space-y-6">
           <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold">Welcome to Aegir Hub</h1>
+            <h1 className="text-3xl font-bold">Welcome to Hub</h1>
             <p className="text-zinc-400">Connect your wallet to access the dashboard</p>
           </div>
           <div className="flex items-center gap-4">
@@ -68,44 +68,43 @@ export default function HubPage() {
   }
 
   return (
-    <div className="flex h-screen bg-black text-white relative">
+    <div className="flex flex-col h-screen bg-black text-white">
       <StarsBackground />
 
-      {/* Main Content */}
-      <div className="flex-1 flex relative z-10">
+      {/* Main Content Container */}
+      <div className="flex-1 flex relative z-10 overflow-hidden">
+        {/* Left Panel - Dashboard */}
         <div className="flex-1 flex flex-col">
-          {/* Header */}
           <header className="h-14 border-b border-gray-800 flex items-center bg-black/30 backdrop-blur-sm">
             <div className="flex-1 flex items-center px-4">
               <Link href="/" className="hover:opacity-80 transition-opacity">
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful_flat-style_logo_desi-Mxrj2lGzGBxZB7jWTgQ6vXatSStLad.jpeg"
-                  alt="Aegir Logo"
+                  alt="Midas Logo"
                   width={32}
                   height={32}
                   className="rounded-full"
-                  style={{
-                    filter: "drop-shadow(0 0 10px rgba(64, 224, 208, 0.5))",
-                  }}
                 />
               </Link>
-              <h1 className="ml-6 text-lg font-semibold">Aegir Hub</h1>
+              <h1 className="ml-6 text-lg font-semibold">Hub</h1>
             </div>
           </header>
 
-          {/* Dashboard Content */}
+          {/* Dashboard Content with Fixed Height */}
           <div className="flex-1 overflow-auto">
             <CryptoDashboard />
           </div>
         </div>
 
         {/* Right Panel - AI Chat */}
-        <div className="w-[400px] bg-black/30 backdrop-blur-sm">
+        <div className="w-[400px] flex flex-col bg-black/30 backdrop-blur-sm">
           <div className="h-14 border-b border-gray-800 flex items-center justify-end px-4">
             <ConnectButton />
           </div>
-          <div className="h-[calc(100vh-3.5rem)]">
-            <AIPortfolioChat data={portfolioData} />
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 overflow-auto">
+              <AIPortfolioChat data={portfolioData} />
+            </div>
           </div>
         </div>
       </div>
@@ -119,7 +118,7 @@ export default function HubPage() {
           txHash={lastTransaction.txHash}
           additionalInfo={lastTransaction.additionalInfo}
           onClose={() => setShowTransactionSuccess(false)}
-          position="bottom-left"
+          position="top-left"
         />
       )}
     </div>

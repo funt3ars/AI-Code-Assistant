@@ -2,42 +2,75 @@
 
 import { useEffect, useRef } from "react"
 
-interface TradingViewChartProps {
-  symbol: string
-  theme?: "light" | "dark"
+declare global {
+  interface Window {
+    TradingView: any
+  }
 }
 
-export function TradingViewChart({ symbol, theme = "light" }: TradingViewChartProps) {
-  const container = useRef<HTMLDivElement>(null)
+interface TradingViewChartProps {
+  symbol?: string
+  theme?: 'light' | 'dark'
+  autosize?: boolean
+  interval?: string
+}
+
+export function TradingViewChart({
+  symbol = 'BINANCE:SUIUSDT',
+  theme = 'dark',
+  autosize = true,
+  interval = '1D'
+}: TradingViewChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const script = document.createElement("script")
     script.src = "https://s3.tradingview.com/tv.js"
     script.async = true
     script.onload = () => {
-      if (typeof TradingView !== "undefined" && container.current) {
-        new TradingView.widget({
-          autosize: true,
+      if (containerRef.current && window.TradingView) {
+        new window.TradingView.widget({
+          container: containerRef.current,
           symbol: symbol,
-          interval: "D",
+          interval: interval,
           timezone: "Etc/UTC",
           theme: theme,
           style: "1",
           locale: "en",
           toolbar_bg: "#f1f3f6",
           enable_publishing: false,
-          hide_side_toolbar: false,
           allow_symbol_change: true,
-          container_id: container.current.id,
+          save_image: false,
+          hide_side_toolbar: false,
+          autosize: autosize,
+          studies: [
+            "RSI@tv-basicstudies",
+            "MASimple@tv-basicstudies",
+            "MACD@tv-basicstudies"
+          ],
+          overrides: {
+            "mainSeriesProperties.candleStyle.upColor": "#00C853",
+            "mainSeriesProperties.candleStyle.downColor": "#FF5252",
+            "mainSeriesProperties.candleStyle.borderUpColor": "#00C853",
+            "mainSeriesProperties.candleStyle.borderDownColor": "#FF5252",
+            "mainSeriesProperties.candleStyle.wickUpColor": "#00C853",
+            "mainSeriesProperties.candleStyle.wickDownColor": "#FF5252",
+          },
         })
       }
     }
     document.head.appendChild(script)
-    return () => {
-      document.head.removeChild(script)
-    }
-  }, [symbol, theme])
 
-  return <div ref={container} id={`tradingview_${symbol}`} className="w-full h-[600px]" />
+    return () => {
+      script.remove()
+    }
+  }, [symbol, theme, autosize, interval])
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full min-h-[400px] bg-black/20 backdrop-blur-sm rounded-lg"
+    />
+  )
 }
 

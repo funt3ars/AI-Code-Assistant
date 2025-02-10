@@ -1,5 +1,8 @@
-import { Search, Zap, Brain, Sparkles } from "lucide-react"
+"use client"
+
+import { Wallet, ChartBar, Brain, Sparkles } from "lucide-react"
 import { motion } from "framer-motion"
+import Image from 'next/image'
 
 const shineEffect = `
   @keyframes shine {
@@ -17,34 +20,42 @@ const shineEffect = `
 export function HowToUse() {
   const steps = [
     {
-      icon: Search,
-      title: "Enter Your Query",
-      description: "Start by typing your Sui-related search query into the search box.",
+      icon: Wallet,
+      title: "Connect Wallet",
+      description: "Connect your Sui wallet to access personalized DeFi insights.",
     },
     {
-      icon: Zap,
-      title: "Instant Processing",
-      description: "Our Sui-focused search engine quickly processes your query to find relevant results.",
+      icon: ChartBar,
+      title: "Portfolio Analysis",
+      description: "Get real-time analysis of your DeFi positions and opportunities.",
     },
     {
       icon: Brain,
-      title: "Intelligent Results",
+      title: "AI Insights",
       description:
-        "Receive curated, relevant results that go beyond simple keyword matching, tailored for the Sui ecosystem.",
+        "Receive intelligent DeFi recommendations from Midas, your personal financial advisor.",
     },
     {
       icon: Sparkles,
-      title: "Explore and Learn",
-      description: "Browse through the search results to find the Sui-related information you need.",
+      title: "Optimize & Grow",
+      description: "Execute optimal DeFi strategies based on Midas's expert analysis.",
     },
   ]
 
   return (
     <section className="text-center">
-      <h2 className="text-3xl font-bold mb-6">How to Use Our Sui Web Search</h2>
+      <div className="mb-8">
+        <Image
+          src="/midas-logo.png"
+          alt="Midas Logo"
+          width={120}
+          height={120}
+          className="mx-auto"
+        />
+      </div>
+      <h2 className="text-3xl font-bold mb-6">How to Use Midas</h2>
       <p className="mb-8 text-lg text-muted-foreground">
-        Experience a powerful web search engine designed to help you find Sui-related information quickly and
-        efficiently.
+        Your intelligent DeFi companion for optimizing portfolio performance on the Sui blockchain.
       </p>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {steps.map((step, index) => (

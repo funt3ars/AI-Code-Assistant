@@ -1,8 +1,9 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle } from "lucide-react"
+import { useEffect } from "react"
 
 interface CheckmarkProps {
   size?: number
@@ -211,31 +212,54 @@ export function TransactionResult({
 }
 
 interface TransactionSuccessProps {
-  amount: string;
-  usdAmount: string;
-  onClose?: () => void;
+  type: 'STAKE' | 'SWAP' | 'TRANSFER' | 'NFT_PURCHASE' | 'LIQUIDITY_ADD' | 'GOVERNANCE' | 'DEFAULT'
+  fromAmount: number
+  toAmount: number
+  txHash: string
+  additionalInfo?: {
+    tokenSymbol?: string
+    nftName?: string
+    poolName?: string
+    proposalId?: string
+  }
+  onClose: () => void
 }
 
-export function TransactionSuccess({ amount, usdAmount, onClose }: TransactionSuccessProps) {
+export function TransactionSuccess({
+  txHash,
+  fromAmount,
+  onClose,
+}: TransactionSuccessProps) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose()
+    }, 5000)
+
+    return () => clearTimeout(timer)
+  }, [onClose])
+
   return (
-    <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-green-950/90 p-4 text-green-400 shadow-lg">
-      <CheckCircle2 className="h-5 w-5" />
-      <div className="flex flex-col">
-        <p className="text-sm font-medium">
-          Transaction Successful
-        </p>
-        <p className="text-xs text-green-300">
-          {amount} SUI (${usdAmount})
-        </p>
-      </div>
-      {onClose && (
+    <motion.div
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 100 }}
+      className="fixed top-4 right-4 z-50"
+    >
+      <div className="bg-[#013123] border border-emerald-500/20 rounded-lg shadow-lg flex items-center gap-3 px-4 py-3 min-w-[300px]">
+        <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+        <div className="flex-1">
+          <h3 className="text-emerald-500 font-medium">Transaction Successful</h3>
+          <p className="text-emerald-500/80 text-sm">
+            {fromAmount} SUI (${(fromAmount * 3.28).toFixed(2)})
+          </p>
+        </div>
         <button
-          onClick={onClose}
-          className="ml-4 text-green-300 hover:text-green-200"
+          onClick={() => window.open(`https://explorer.sui.io/txblock/${txHash}`, '_blank')}
+          className="text-emerald-500/90 text-sm hover:text-emerald-400 transition-colors"
         >
           View
         </button>
-      )}
-    </div>
-  );
+      </div>
+    </motion.div>
+  )
 } 

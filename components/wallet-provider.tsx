@@ -1,11 +1,13 @@
 "use client"
 
 import { WalletKitProvider } from "@mysten/wallet-kit"
-import { ReactNode } from "react"
+import { PropsWithChildren } from "react"
 
-export function WalletProvider({ children }: { children: ReactNode }) {
+export function WalletProvider({ children }: PropsWithChildren) {
   return (
-    <WalletKitProvider>
+    <WalletKitProvider
+      features={["sui:signAndExecuteTransaction"]}
+    >
       {children}
     </WalletKitProvider>
   )

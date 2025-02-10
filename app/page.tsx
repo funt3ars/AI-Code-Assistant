@@ -5,8 +5,25 @@ import { StarsBackground } from "@/components/stars-background"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
+import { TypewriterEffect } from "@/components/ui/typewriter-effect"
+import { motion } from "framer-motion"
+import { AlphaRoom } from "@/components/alpha-room"
+import { Card } from "@/components/ui/card"
 
-export default function LandingPage() {
+export default function Home() {
+  const words = [
+    {
+      text: "Welcome",
+    },
+    {
+      text: "to",
+    },
+    {
+      text: "Midas",
+      className: "bg-gradient-to-r from-white to-white/90 bg-clip-text text-transparent",
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col">
       <StarsBackground />
@@ -18,11 +35,11 @@ export default function LandingPage() {
             <div className="container px-4 md:px-6">
               <div className="flex flex-col items-center space-y-8 text-center">
                 <div className="space-y-4">
-                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
-                    Welcome to Aegir
-                  </h1>
+                  <div className="h-[calc(theme(fontSize.7xl)*theme(lineHeight.tight))] overflow-hidden">
+                    <TypewriterEffect words={words} />
+                  </div>
                   <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-                    AI-driven wealth management for the Sui ecosystem—automate, optimize, dominate.
+                    Midas Rex: The AI-Powered DeFi Agent Turning Data Into Gold.
                   </p>
                   <div className="mt-16 flex gap-4 justify-center">
                     <Button
@@ -48,7 +65,7 @@ export default function LandingPage() {
 
                 <div className="flex gap-4 mt-8">
                   <a
-                    href="https://twitter.com/aegirprotocol"
+                    href="https://twitter.com/midasprotocol"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
@@ -60,7 +77,7 @@ export default function LandingPage() {
                     />
                   </a>
                   <a
-                    href="https://github.com/aegirprotocol"
+                    href="https://github.com/midasprotocol"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
@@ -72,7 +89,7 @@ export default function LandingPage() {
                     />
                   </a>
                   <a
-                    href="https://t.me/aegirprotocol"
+                    href="https://t.me/midasprotocol"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
@@ -92,7 +109,7 @@ export default function LandingPage() {
         <footer className="border-t border-white/10 py-4">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">© 2025 Aegir. All rights reserved.</p>
+              <p className="text-xs text-muted-foreground">© 2025 Midas. All rights reserved.</p>
               <nav className="flex gap-4">
                 <Link href="#" className="text-xs text-muted-foreground hover:text-white transition-colors">
                   Terms of Service

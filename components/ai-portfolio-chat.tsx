@@ -1,15 +1,12 @@
 "use client"
 
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useState, useRef, useEffect } from "react"
-import { Send, Bot, User, RefreshCw, MessageSquare, Crown } from "lucide-react"
+import { useRef, useEffect, useState } from "react"
+import { Card } from "./ui/card"
+import { Input } from "./ui/input"
+import { Button } from "./ui/button"
+import { Send, Bot } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { SuiAgent } from "@/lib/sui-agent"
-import { useWalletKit } from '@mysten/wallet-kit'
-import { TransactionBlock } from '@mysten/sui.js/transactions'
-import { TransactionHelper } from '@/lib/sui/transaction-helper'
+import { SuiAgent, SuiAgentResponse } from "@/lib/sui-agent"
 
 interface Message {
   role: 'user' | 'assistant'
@@ -24,86 +21,54 @@ export interface AIPortfolioChatProps {
     portfolioData: any[]
     treasuryUSDC: number
     treasurySUI: number
-    updateHubInfo: (updates: any) => void
+    updateHubInfo: (updates: SuiAgentResponse['updates']) => void
   }
 }
 
 export function AIPortfolioChat({ data }: AIPortfolioChatProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! How can I help you today?',
-      timestamp: new Date()
-    }
-  ])
-  const [input, setInput] = useState('')
-  const [isProcessing, setIsProcessing] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const { currentAccount, signAndExecuteTransactionBlock } = useWalletKit()
-  const transactionHelper = new TransactionHelper()
+  const [messages, setMessages] = useState<Message[]>([{
+    role: 'assistant',
+    content: "Hello! I'm your Sui portfolio assistant. How can I help you today?",
+    timestamp: new Date()
+  }])
+  const [input, setInput] = useState("")
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
-  const handleTransaction = async (tx: TransactionBlock) => {
-    try {
-      if (!currentAccount?.address) {
-        throw new Error('Please connect your wallet first')
-      }
-
-      // Add pending message
-      const pendingMessage: Message = {
-        role: 'assistant',
-        content: 'Processing transaction...',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, pendingMessage])
-
-      // Execute transaction
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: tx,
-        chain: 'mainnet',
-        options: {
-          showInput: true,
-          showEffects: true,
-          showEvents: true,
-        }
-      })
-
-      if (result.effects?.status?.status === 'success') {
-        const successMessage = {
-          role: 'assistant',
-          content: `Transaction successful!\nDigest: ${result.digest.substring(0, 10)}...\nGas used: ${result.effects.gasUsed.computationCost} MIST`,
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, successMessage])
-      } else {
-        throw new Error('Transaction failed: ' + result.effects?.status?.error)
-      }
-
-      return result
-    } catch (error) {
-      console.error('Transaction failed:', error)
-      const errorMessage = {
-        role: 'assistant',
-        content: `Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
-      throw error
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      const { scrollHeight, clientHeight } = chatContainerRef.current
+      chatContainerRef.current.scrollTop = scrollHeight - clientHeight
     }
   }
 
+  // Handle scroll events to detect if we're at the bottom
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
+      const bottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10
+      setIsAtBottom(bottom)
+    }
+  }
+
+  // Auto-scroll only if we were at the bottom before new message
+  useEffect(() => {
+    if (isAtBottom) {
+      scrollToBottom()
+    }
+  }, [messages, isAtBottom])
+
+  // Add scroll event listener
+  useEffect(() => {
+    const container = chatContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   const processQuery = async (query: string) => {
     try {
-      if (!currentAccount?.address) {
-        throw new Error('Please connect your wallet first')
-      }
-
-      // Add user message
       const userMessage: Message = {
         role: 'user',
         content: query,
@@ -111,134 +76,104 @@ export function AIPortfolioChat({ data }: AIPortfolioChatProps) {
       }
       setMessages(prev => [...prev, userMessage])
 
-      const response = await fetch('/api/sui', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: query,
-          context: {
-            walletAddress: currentAccount.address,
-            connected: true,
-            suiPrice: data.suiPrice
+      // Use the Sui Agent with instruction for concise responses
+      const agent = SuiAgent.getInstance();
+      const result: SuiAgentResponse = await agent.processQuery(
+        `Please provide a concise response (max 2-3 sentences) to: ${query}`,
+        {
+          suiPrice: data.suiPrice,
+          totalValue: data.totalPortfolioValue,
+          treasury: {
+            usdc: data.treasuryUSDC,
+            sui: data.treasurySUI
           }
-        })
-      })
-
-      const result = await response.json()
-
-      if (result.transaction) {
-        await handleTransaction(result.transaction)
-      } else {
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: result.response,
-          timestamp: new Date()
         }
-        setMessages(prev => [...prev, assistantMessage])
+      );
+
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: result.response,
+        timestamp: new Date()
       }
+      setMessages(prev => [...prev, assistantMessage])
 
       if (result.updates) {
         data.updateHubInfo(result.updates)
       }
+
     } catch (error) {
-      console.error('Error:', error)
-      const errorMessage: Message = {
+      console.error('Error processing query:', error)
+      setMessages(prev => [...prev, {
         role: 'assistant',
-        content: error instanceof Error ? error.message : 'Unknown error',
+        content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setIsProcessing(false)
+      }])
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || isProcessing) return
+    if (!input.trim()) return
 
-    const query = input.trim()
-    setInput('')
-    await processQuery(query)
+    await processQuery(input.trim())
+    setInput("")
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Chat Header */}
-      <div className="border-b border-gray-800 p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold">Midas Rex</h2>
-            <p className="text-xs text-gray-400">Your Sui Portfolio Assistant</p>
-          </div>
-        </div>
+    <div className="flex flex-col h-full max-h-screen">
+      {/* Header */}
+      <div className="shrink-0 px-4 py-2 border-b border-white/10">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Bot className="h-5 w-5" />
+          AI Assistant
+        </h2>
       </div>
 
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
-        <div className="space-y-4">
-          <AnimatePresence mode="wait">
+      {/* Messages Container */}
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20"
+      >
+        <div className="flex flex-col space-y-4">
+          <AnimatePresence initial={false}>
             {messages.map((message, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className={`flex gap-2 ${message.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'}`}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className={`rounded-lg p-3 ${message.role === 'assistant'
+                  ? 'bg-white/5'
+                  : 'bg-blue-500/10 ml-auto max-w-[80%]'
+                  }`}
               >
-                <div className={`flex-1 ${message.role === 'assistant'
-                  ? 'bg-gray-900/50 rounded-br-xl'
-                  : 'bg-emerald-500/10 rounded-bl-xl'
-                  } rounded-t-xl p-3`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    {message.role === 'assistant' ? (
-                      <Bot className="h-4 w-4" />
-                    ) : (
-                      <User className="h-4 w-4" />
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-sm">{message.content}</p>
-                </div>
+                <p className="text-sm text-white">{message.content}</p>
               </motion.div>
             ))}
           </AnimatePresence>
-
-          {isProcessing && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Processing...
-            </motion.div>
-          )}
         </div>
-      </ScrollArea>
+      </div>
 
-      <form onSubmit={handleSubmit} className="p-4">
-        <div className="flex gap-2">
+      {/* Input Container - Fixed at bottom */}
+      <div className="shrink-0 p-4 border-t border-white/10 bg-black/20 backdrop-blur-sm">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your portfolio..."
-            disabled={isProcessing}
+            className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/50"
           />
           <Button
             type="submit"
             size="icon"
-            disabled={isProcessing || !input.trim()}
+            className="bg-white/10 hover:bg-white/20"
+            disabled={!input.trim()}
           >
             <Send className="h-4 w-4" />
           </Button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }

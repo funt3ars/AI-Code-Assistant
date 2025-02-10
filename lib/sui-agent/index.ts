@@ -1,56 +1,73 @@
 import { AtomaAgent } from './atoma-agent';
-import type { AgentResponse } from './types';
-import { validateAgentResponse } from './validation';
+import type { AgentResponse } from '@elizaos/core';
+
+export interface SuiAgentResponse extends AgentResponse {
+    response: string;
+    updates?: {
+        portfolioValue?: number;
+        transactions?: any[];
+        positions?: any[];
+        [key: string]: any;
+    };
+}
 
 export class SuiAgent {
     private static instance: SuiAgent;
     private atomaAgent: AtomaAgent;
+    private bearerToken: string;
 
     private constructor(bearerToken: string) {
-        this.atomaAgent = new AtomaAgent(bearerToken);
+        // Log the token being used (first 4 chars only for security)
+        console.log('SuiAgent initializing with token prefix:', bearerToken.substring(0, 4));
+
+        this.bearerToken = bearerToken;
+        this.atomaAgent = new AtomaAgent(this.bearerToken);
     }
 
-    public static getInstance(bearerToken?: string): SuiAgent {
+    public static getInstance(): SuiAgent {
         if (!SuiAgent.instance) {
-            if (!bearerToken) {
-                throw new Error('Bearer token is required for first initialization');
+            // Try both environment variables
+            const token = process.env.NEXT_PUBLIC_ATOMASDK_BEARER_AUTH || process.env.ATOMASDK_BEARER_AUTH;
+            if (!token) {
+                throw new Error('ATOMASDK_BEARER_AUTH environment variable is not set');
             }
-            SuiAgent.instance = new SuiAgent(bearerToken);
+            SuiAgent.instance = new SuiAgent(token);
         }
         return SuiAgent.instance;
     }
 
-    async processQuery(prompt: string, context?: any): Promise<AgentResponse> {
+    async processQuery(query: string, context: {
+        suiPrice: number | null;
+        totalValue: number;
+        treasury: {
+            usdc: number;
+            sui: number;
+        };
+    }): Promise<SuiAgentResponse> {
         try {
             // Use Atoma's agent to process the query
-            const result = await this.atomaAgent.query({ prompt, context });
+            const result = await this.atomaAgent.query({
+                prompt: query,
+                context: context
+            });
 
-            const response: AgentResponse = {
+            return {
                 reasoning: result.reasoning || 'Processing query',
                 response: result.response || 'No response available',
-                status: (result.status === 'success' || result.status === 'failure') ? result.status : 'failure',
-                query: prompt,
-                errors: result.errors || []
+                status: result.status || 'success',
+                query: query,
+                errors: result.errors || [],
+                updates: {
+                    portfolioValue: context.totalValue,
+                }
             };
-
-            validateAgentResponse(response);
-            return response;
         } catch (error) {
             console.error('Atoma Agent Error:', error);
-            const errorResponse: AgentResponse = {
-                reasoning: 'Error processing query',
-                response: (error as Error).message,
-                status: 'failure',
-                query: prompt,
-                errors: [(error as Error).message]
-            };
-
-            validateAgentResponse(errorResponse);
-            return errorResponse;
+            throw error;
         }
     }
 
-    async SuperVisorAgent(query: string): Promise<AgentResponse> {
+    async SuperVisorAgent(query: string): Promise<any> {
         try {
             // Use Atoma's agent directly
             const result = await this.atomaAgent.query({

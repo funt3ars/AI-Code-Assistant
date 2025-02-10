@@ -56,6 +56,17 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      animation: {
+        'twinkle': 'twinkle 50s linear infinite',
+        'twinkle-slow': 'twinkle 100s linear infinite',
+        'twinkle-slower': 'twinkle 150s linear infinite',
+      },
+      keyframes: {
+        twinkle: {
+          '0%': { transform: 'translateY(0)' },
+          '100%': { transform: 'translateY(-2000px)' },
+        }
+      }
     },
   },
   plugins: [require("tailwindcss-animate")],
