@@ -156,22 +156,22 @@ def query_llm_with_plan(
         client = create_llm_client(provider=provider, model=model)
         logger.info(f"Created LLM client with provider={provider}, model={model}")
         
-        # Combine prompts
-        combined_prompt = f"""You are working on a multi-agent context. The executor is the one who actually does the work. And you are the planner. Now the executor is asking you for help. Please analyze the provided project plan and status, then address the executor's specific query or request.
+    # Combine prompts
+    combined_prompt = f"""You are working on a multi-agent context. The executor is the one who actually does the work. And you are the planner. Now the executor is asking you for help. Please analyze the provided project plan and status, then address the executor's specific query or request.
 
 You need to think like a founder. Prioritize agility and don't over-engineer. Think deep. Try to foresee challenges and derisk earlier. If opportunity sizing or probing experiments can reduce risk with low cost, instruct the executor to do them.
-        
+    
 Project Plan and Status:
 ======
 {plan_content}
 ======
 """
 
-        if file_content:
-            combined_prompt += f"\nFile Content:\n======\n{file_content}\n======\n"
+    if file_content:
+        combined_prompt += f"\nFile Content:\n======\n{file_content}\n======\n"
 
-        if user_prompt:
-            combined_prompt += f"\nUser Query:\n{user_prompt}\n"
+    if user_prompt:
+        combined_prompt += f"\nUser Query:\n{user_prompt}\n"
 
         combined_prompt += """\nYour response should be in two parts:
 
@@ -215,7 +215,7 @@ Your markdown-formatted plan here...
             return plan
         else:
             logger.warning("Response did not contain properly formatted sections")
-            return response
+    return response
             
     except Exception as e:
         logger.error(f"Error in query_llm_with_plan: {e}")
@@ -223,14 +223,14 @@ Your markdown-formatted plan here...
 
 def main():
     try:
-        parser = argparse.ArgumentParser(description='Query LLM with project plan context')
-        parser.add_argument('--prompt', type=str, help='Additional prompt to send to the LLM', required=False)
-        parser.add_argument('--file', type=str, help='Path to a file whose content should be included in the prompt', required=False)
-        parser.add_argument('--provider', choices=['openai','anthropic','gemini','local','deepseek','azure'], default='openai', help='The API provider to use')
-        parser.add_argument('--model', type=str, help='The model to use (default depends on provider)')
+    parser = argparse.ArgumentParser(description='Query LLM with project plan context')
+    parser.add_argument('--prompt', type=str, help='Additional prompt to send to the LLM', required=False)
+    parser.add_argument('--file', type=str, help='Path to a file whose content should be included in the prompt', required=False)
+    parser.add_argument('--provider', choices=['openai','anthropic','gemini','local','deepseek','azure'], default='openai', help='The API provider to use')
+    parser.add_argument('--model', type=str, help='The model to use (default depends on provider)')
         parser.add_argument('--debug', action='store_true', help='Enable debug logging')
         parser.add_argument('--config', type=str, help='Path to configuration file')
-        args = parser.parse_args()
+    args = parser.parse_args()
 
         if args.debug:
             logger.setLevel(logging.DEBUG)
@@ -239,33 +239,33 @@ def main():
         if args.config:
             os.environ['LLM_CONFIG_PATH'] = args.config
 
-        # Load environment variables
-        load_environment()
+    # Load environment variables
+    load_environment()
 
-        # Read plan status
+    # Read plan status
         plan_content = read_file_content(STATUS_FILE)
         if not plan_content:
             logger.error("Failed to read plan status")
             sys.exit(1)
 
-        # Read file content if specified
-        file_content = None
-        if args.file:
-            file_content = read_file_content(args.file)
-            if file_content is None:
+    # Read file content if specified
+    file_content = None
+    if args.file:
+        file_content = read_file_content(args.file)
+        if file_content is None:
                 logger.error("Failed to read specified file")
-                sys.exit(1)
+            sys.exit(1)
 
         # Query LLM and update scratchpad
-        response = query_llm_with_plan(plan_content, args.prompt, file_content, provider=args.provider, model=args.model)
-        if response:
+    response = query_llm_with_plan(plan_content, args.prompt, file_content, provider=args.provider, model=args.model)
+    if response:
             if update_scratchpad(response):
                 print('Successfully updated scratchpad.md with the new plan.')
                 print('Please review the changes and proceed with implementation.')
             else:
                 logger.error("Failed to update scratchpad")
                 sys.exit(1)
-        else:
+    else:
             logger.error("Failed to get response from LLM")
             sys.exit(1)
     except Exception as e:

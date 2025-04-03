@@ -4,9 +4,40 @@ Planner Module
 Handles high-level analysis, task breakdown, and strategic planning.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 from pathlib import Path
+import logging
+from ..llm import LLMClient
+from ..errors import PlanningError
+
+class PlanningResult:
+    """Class representing a planning result."""
+    
+    def __init__(
+        self,
+        status: str,
+        plan: Dict[str, Any],
+        error: Optional[Exception] = None
+    ):
+        """Initialize the result.
+        
+        Args:
+            status: Planning status ("success" or "failure").
+            plan: The generated plan.
+            error: Error that occurred during planning, if any.
+        """
+        self.status = status
+        self.plan = plan
+        self.error = error
+    
+    def __str__(self) -> str:
+        """Return a string representation of the result."""
+        return (
+            f"PlanningResult(status={self.status}, "
+            f"steps={len(self.plan['steps'])}, "
+            f"estimated_time={self.plan['estimated_total_time']})"
+        )
 
 class Planner:
     """Handles high-level analysis and task planning."""
@@ -103,4 +134,101 @@ class Planner:
                 "description": "Update documentation",
                 "status": "pending"
             }
-        ] 
+        ]
+
+class CorePlanner:
+    """Core planner for handling task planning."""
+    
+    def __init__(self):
+        """Initialize the planner."""
+        self.logger = logging.getLogger(__name__)
+        self.llm_client = LLMClient()
+    
+    def _validate_task(self, task: Dict[str, Any]) -> bool:
+        """Validate a task.
+        
+        Args:
+            task: The task to validate.
+            
+        Returns:
+            True if the task is valid, False otherwise.
+        """
+        required_fields = ["description", "requirements", "priority"]
+        
+        if not isinstance(task, dict):
+            return False
+            
+        if not all(field in task for field in required_fields):
+            return False
+            
+        if not isinstance(task["requirements"], list):
+            return False
+            
+        return True
+    
+    def _validate_plan(self, plan: Dict[str, Any]) -> bool:
+        """Validate a plan.
+        
+        Args:
+            plan: The plan to validate.
+            
+        Returns:
+            True if the plan is valid, False otherwise.
+        """
+        required_fields = ["steps", "estimated_total_time", "dependencies"]
+        
+        if not isinstance(plan, dict):
+            return False
+            
+        if not all(field in plan for field in required_fields):
+            return False
+            
+        if not isinstance(plan["steps"], list):
+            return False
+            
+        if not isinstance(plan["dependencies"], list):
+            return False
+            
+        return True
+    
+    def create_plan(
+        self,
+        task: Dict[str, Any],
+        **options
+    ) -> PlanningResult:
+        """Create a plan for a task.
+        
+        Args:
+            task: The task to plan for.
+            **options: Additional planning options.
+            
+        Returns:
+            Planning result.
+            
+        Raises:
+            PlanningError: If planning fails.
+        """
+        try:
+            if not self._validate_task(task):
+                raise PlanningError("Invalid task format")
+            
+            # Create planning prompt
+            prompt = (
+                f"Please create a plan for the following task:\n\n"
+                f"Task: {json.dumps(task, indent=2)}\n\n"
+                f"Respond with a JSON object containing:\n"
+                f"- steps: List of steps with id, description, and estimated_time\n"
+                f"- estimated_total_time: Total estimated time\n"
+                f"- dependencies: List of dependencies between steps\n"
+            )
+            
+            # Get plan from LLM
+            response = self.llm_client.generate_response(prompt)
+            plan = json.loads(response.content)
+            
+            if not self._validate_plan(plan):
+                raise PlanningError("Invalid plan format")
+            
+            return PlanningResult(status="success", plan=plan)
+        except Exception as e:
+            raise PlanningError(f"Error creating plan: {e}", cause=e) 

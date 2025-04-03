@@ -1,6 +1,6 @@
 # Devin-like AI Assistant Integration
 
-This document explains how to use the integrated Devin-like AI capabilities in your Midas DeFi Assistant project.
+This document explains how to use the integrated Devin-like AI capabilities in your projects.
 
 ## Setup
 
@@ -25,7 +25,7 @@ The multi-agent system leverages CursorAI's built-in capabilities rather than ex
 
 ### 2. Extended Toolset
 
-- **Web Scraping**: For market data and documentation
+- **Web Scraping**: For gathering data and documentation
 
   ```bash
   source devin-venv/bin/activate
@@ -35,7 +35,7 @@ The multi-agent system leverages CursorAI's built-in capabilities rather than ex
 - **Search Engine**: Find relevant information
   ```bash
   source devin-venv/bin/activate
-  python tools/search_ddg.py "sui blockchain documentation"
+  python tools/search_ddg.py "your search query"
   ```
 
 ### 3. Self-Evolution

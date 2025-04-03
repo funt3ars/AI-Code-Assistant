@@ -274,8 +274,8 @@ def main():
         parser.add_argument('--prompt', type=str, required=True, help='The prompt to send to CursorAI')
         parser.add_argument('--debug', action='store_true', help='Enable debug logging')
         parser.add_argument('--config', type=str, help='Path to configuration file')
-        args = parser.parse_args()
-        
+    args = parser.parse_args()
+    
         if args.debug:
             logger.setLevel(logging.DEBUG)
         
@@ -283,7 +283,7 @@ def main():
             os.environ['LLM_CONFIG_PATH'] = args.config
         
         response = query_llm(args.prompt)
-        print(response)
+    print(response)
     except Exception as e:
         logger.error(f"Error in main: {e}")
         sys.exit(1)

@@ -89,7 +89,7 @@ class TestWebScraperRetries:
         ]
 
         with patch('asyncio.sleep', mock_sleep):
-            async with WebScraper(max_retries=3) as scraper:
+            async with WebScraper(max_retries=3, disable_rate_limit=True) as scraper:
                 scraper.session = mock_session
                 result = await scraper.fetch_url("https://example.com")
 
@@ -138,12 +138,19 @@ class TestWebScraperConcurrency:
     @pytest.mark.asyncio
     async def test_mixed_success_failure(self, mock_session):
         """Test handling of mixed successes and failures in concurrent scraping."""
-        success_response = AsyncMock()
-        success_response.status = 200
-        success_response.text = AsyncMock(return_value="Success")
-        success_response.headers = {'Content-Type': 'text/html'}
-        success_response.__aenter__ = AsyncMock(return_value=success_response)
-        success_response.__aexit__ = AsyncMock(return_value=None)
+        success_response1 = AsyncMock()
+        success_response1.status = 200
+        success_response1.text = AsyncMock(return_value="Success 1")
+        success_response1.headers = {'Content-Type': 'text/html'}
+        success_response1.__aenter__ = AsyncMock(return_value=success_response1)
+        success_response1.__aexit__ = AsyncMock(return_value=None)
+
+        success_response2 = AsyncMock()
+        success_response2.status = 200
+        success_response2.text = AsyncMock(return_value="Success 2")
+        success_response2.headers = {'Content-Type': 'text/html'}
+        success_response2.__aenter__ = AsyncMock(return_value=success_response2)
+        success_response2.__aexit__ = AsyncMock(return_value=None)
 
         fail_response = AsyncMock()
         fail_response.status = 500
@@ -157,29 +164,26 @@ class TestWebScraperConcurrency:
         # - success1.com (1 response)
         # - fail.com (2 attempts with max_retries=1)
         # - success2.com (1 response)
-        mock_session.get.side_effect = [
-            success_response,  # success1.com
-            fail_response,    # fail.com first attempt
-            fail_response,    # fail.com retry
-            success_response, # success2.com
-            fail_response,    # Extra response in case of unexpected retries
-            fail_response     # Extra response in case of unexpected retries
-        ]
+        mock_session.get.side_effect = {
+            "https://success1.com": success_response1,
+            "https://fail.com": fail_response,
+            "https://success2.com": success_response2
+        }.get
 
         urls = ["https://success1.com", "https://fail.com", "https://success2.com"]
 
-        async with WebScraper(max_retries=1) as scraper:
+        async with WebScraper(max_retries=1, disable_rate_limit=True) as scraper:
             scraper.session = mock_session
             results = await scraper.scrape_urls(urls)
 
         # Verify results
         assert len(results) == 3
         assert results[0]["status"] == 200
-        assert results[0]["content"] == "Success"
+        assert results[0]["content"] == "Success 1"
         assert results[1]["status"] == 500
         assert results[1]["error"] == "HTTP 500"
         assert results[2]["status"] == 200
-        assert results[2]["content"] == "Success"
+        assert results[2]["content"] == "Success 2"
 
 class TestWebScraperErrorHandling:
     @pytest.mark.asyncio

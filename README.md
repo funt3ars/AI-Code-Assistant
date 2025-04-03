@@ -221,118 +221,75 @@ docker run -p 3000:3000 --env-file .env -d midas-app
 - Set up proper monitoring and logging
 - Configure proper resource limits
 
-# Devin Integration Package
+# Devin Integration
 
-A reusable package for integrating Devin-like AI capabilities into Python projects.
+A Python package that provides Devin-like AI capabilities for your projects. This package includes tools for web scraping, search functionality, and AI model integration.
+
+## Features
+
+- Multi-agent system with Planner and Executor roles
+- Web scraping capabilities
+- Search engine integration
+- Screenshot verification workflow
+- LLM integration with multiple providers
 
 ## Installation
 
-1. Install the package using pip:
+You can install the package using pip:
 
 ```bash
-pip install devin_integration
+pip install devin-integration
 ```
 
-2. Create a `.devin_config.json` file in your project root:
+For development installation with additional tools:
 
-```json
-{
-  "project_root": ".",
-  "tools": {
-    "web_scraper": {
-      "enabled": true,
-      "max_concurrent": 3
-    },
-    "search_engine": {
-      "enabled": true,
-      "provider": "duckduckgo"
-    }
-  },
-  "logging": {
-    "level": "INFO",
-    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  }
-}
+```bash
+pip install devin-integration[dev]
 ```
 
 ## Usage
 
-### Basic Usage
-
 ```python
-from devin_integration import Planner, Executor, load_settings
+from devin_integration import Planner, Executor
 
-# Load settings
-settings = load_settings(".")
+# Initialize the multi-agent system
+planner = Planner()
+executor = Executor()
 
-# Initialize planner and executor
-planner = Planner(".")
-executor = Executor(".")
+# Use the planner to analyze a task
+task_analysis = planner.analyze_task("Implement a new feature")
 
-# Analyze a task
-task_description = "Implement a new feature for user authentication"
-analysis = planner.analyze_task(task_description)
-
-# Execute tasks
-for task in analysis["task_breakdown"]:
-    result = executor.execute_task(task)
-    print(f"Task {task['description']} completed with status: {result['status']}")
+# Let the executor implement the solution
+result = executor.execute(task_analysis)
 ```
 
-### Advanced Usage
+## Development
 
-#### Custom Task Types
+1. Clone the repository:
 
-You can extend the Executor class to handle custom task types:
-
-```python
-from devin_integration import Executor
-
-class CustomExecutor(Executor):
-    def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        if task['type'] == 'custom_task':
-            return self._handle_custom_task(task)
-        return super().execute_task(task)
-
-    def _handle_custom_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        # Implement custom task handling
-        pass
+```bash
+git clone https://github.com/funt3ars/devin_integration.git
+cd devin_integration
 ```
 
-#### Custom Settings
+2. Create a virtual environment and install dependencies:
 
-You can customize the settings for your project:
-
-```python
-from devin_integration.config.settings import load_settings, save_settings
-
-# Load current settings
-settings = load_settings(".")
-
-# Modify settings
-settings["tools"]["web_scraper"]["max_concurrent"] = 5
-
-# Save modified settings
-save_settings(".", settings)
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -e .[dev]
 ```
 
-## Features
+3. Run tests:
 
-- **Planner**: High-level analysis and task breakdown
-- **Executor**: Task execution and implementation
-- **Web Scraper**: For market data and documentation
-- **Search Engine**: Find relevant information
-- **Settings Management**: Easy configuration
-- **Logging**: Built-in logging support
+```bash
+pytest tests/
+```
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
