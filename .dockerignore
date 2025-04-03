@@ -1,0 +1,27 @@
+# Directories
+node_modules
+.next
+out
+.git
+.github
+.vscode
+
+# Files
+.env*
+.gitignore
+README.md
+.eslintrc.json
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# OS specific
+.DS_Store
+Thumbs.db 

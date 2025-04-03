@@ -62,7 +62,9 @@ const nextConfig = {
   },
   // Increase timeout
   experimental: {
+    outputStandalone: true,
   },
+  output: 'standalone',
   env: {
     NEXT_PUBLIC_ATOMA_BEARER_TOKEN: process.env.NEXT_PUBLIC_ATOMA_BEARER_TOKEN,
   },

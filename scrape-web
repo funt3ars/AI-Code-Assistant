@@ -1,0 +1,3 @@
+#!/bin/bash
+source "$(dirname "$0")/tools-venv/bin/activate"
+python3 "$(dirname "$0")/tools/web_scraper.py" "$@"
