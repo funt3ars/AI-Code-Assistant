@@ -1,202 +1,110 @@
-#!/usr/bin/env /workspace/tmp_windsurf/venv/bin/python3
-
-import asyncio
-import argparse
+#!/usr/bin/env python3
+"""
+Web scraping tool for gathering data and documentation from websites.
+"""
 import sys
-import os
-from typing import List, Optional
-from playwright.async_api import async_playwright
-import html5lib
-from multiprocessing import Pool
-import time
-from urllib.parse import urlparse
+import requests
+from bs4 import BeautifulSoup
+import json
+from typing import Dict, Any
 import logging
-import aiohttp
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    stream=sys.stderr
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def fetch_page(url: str, session: Optional[aiohttp.ClientSession] = None) -> Optional[str]:
-    """Asynchronously fetch a webpage's content."""
-    if session is None:
-        async with aiohttp.ClientSession() as session:
-            try:
-                logger.info(f"Fetching {url}")
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        content = await response.text()
-                        logger.info(f"Successfully fetched {url}")
-                        return content
-                    else:
-                        logger.error(f"Error fetching {url}: HTTP {response.status}")
-                        return None
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error(f"Network error fetching {url}: {str(e)}")
-                return None
-            except UnicodeDecodeError as e:
-                logger.error(f"Encoding error fetching {url}: {str(e)}")
-                return None
-    else:
+class WebScraper:
+    """Web scraping utility for gathering documentation and data."""
+    
+    def __init__(self):
+        """Initialize the web scraper with default headers."""
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; DevinAI/1.0; +http://example.com)'
+        }
+    
+    def scrape(self, url: str) -> Dict[str, Any]:
+        """
+        Scrape content from a given URL.
+        
+        Args:
+            url: The URL to scrape
+            
+        Returns:
+            Dictionary containing:
+                - title: Page title
+                - headings: List of headings
+                - content: Main content text
+                - links: List of relevant links
+        """
         try:
-            logger.info(f"Fetching {url}")
-            response = await session.get(url)
-            if response.status == 200:
-                content = await response.text()
-                logger.info(f"Successfully fetched {url}")
-                return content
-            else:
-                logger.error(f"Error fetching {url}: HTTP {response.status}")
-                return None
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logger.error(f"Network error fetching {url}: {str(e)}")
-            return None
-        except UnicodeDecodeError as e:
-            logger.error(f"Encoding error fetching {url}: {str(e)}")
-            return None
-
-def parse_html(html_content: Optional[str]) -> str:
-    """Parse HTML content and extract text with hyperlinks in markdown format."""
-    if not html_content:
-        return ""
-    
-    try:
-        document = html5lib.parse(html_content)
-        result = []
-        seen_texts = set()  # To avoid duplicates
-        
-        def should_skip_element(elem) -> bool:
-            """Check if the element should be skipped."""
-            # Skip script and style tags
-            if elem.tag in ['{http://www.w3.org/1999/xhtml}script', 
-                          '{http://www.w3.org/1999/xhtml}style']:
-                return True
-            # Skip empty elements or elements with only whitespace
-            if not any(text.strip() for text in elem.itertext()):
-                return True
-            return False
-        
-        def process_element(elem, depth=0):
-            """Process an element and its children recursively."""
-            if should_skip_element(elem):
-                return
+            # Fetch the page
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
             
-            # Handle text content
-            if hasattr(elem, 'text') and elem.text:
-                text = elem.text.strip()
-                if text and text not in seen_texts:
-                    # Check if this is an anchor tag
-                    if elem.tag == '{http://www.w3.org/1999/xhtml}a':
-                        href = None
-                        for attr, value in elem.items():
-                            if attr.endswith('href'):
-                                href = value
-                                break
-                        if href and not href.startswith(('#', 'javascript:')):
-                            # Format as markdown link
-                            link_text = f"[{text}]({href})"
-                            result.append("  " * depth + link_text)
-                            seen_texts.add(text)
-                    else:
-                        result.append("  " * depth + text)
-                        seen_texts.add(text)
+            # Parse HTML
+            soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Process children
-            for child in elem:
-                process_element(child, depth + 1)
+            # Extract relevant information
+            result = {
+                'title': self._get_title(soup),
+                'headings': self._get_headings(soup),
+                'content': self._get_main_content(soup),
+                'links': self._get_relevant_links(soup)
+            }
             
-            # Handle tail text
-            if hasattr(elem, 'tail') and elem.tail:
-                tail = elem.tail.strip()
-                if tail and tail not in seen_texts:
-                    result.append("  " * depth + tail)
-                    seen_texts.add(tail)
-        
-        # Start processing from the body tag
-        body = document.find('.//{http://www.w3.org/1999/xhtml}body')
-        if body is not None:
-            process_element(body)
-        else:
-            # Fallback to processing the entire document
-            process_element(document)
-        
-        # Filter out common unwanted patterns
-        filtered_result = []
-        for line in result:
-            # Skip lines that are likely to be noise
-            if any(pattern in line.lower() for pattern in [
-                'var ', 
-                'function()', 
-                '.js',
-                '.css',
-                'google-analytics',
-                'disqus',
-                '{',
-                '}'
-            ]):
-                continue
-            filtered_result.append(line)
-        
-        return '\n'.join(filtered_result)
-    except html5lib.html5parser.ParseError as e:
-        logger.error(f"HTML parsing error: {str(e)}")
-        return ""
-    except (AttributeError, KeyError, IndexError) as e:
-        logger.error(f"Error processing HTML elements: {str(e)}")
-        return ""
-    except UnicodeEncodeError as e:
-        logger.error(f"Error encoding text: {str(e)}")
-        return ""
-
-async def process_urls(urls: List[str], max_concurrent: int = 5, session: Optional[aiohttp.ClientSession] = None) -> List[str]:
-    """Process multiple URLs concurrently."""
-    if session is None:
-        async with aiohttp.ClientSession() as session:
-            tasks = [fetch_page(url, session) for url in urls]
-            html_contents = await asyncio.gather(*tasks)
-    else:
-        tasks = [fetch_page(url, session) for url in urls]
-        html_contents = await asyncio.gather(*tasks)
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error scraping {url}: {str(e)}")
+            return {
+                'error': str(e),
+                'url': url
+            }
     
-    # Parse HTML contents in parallel
-    with Pool() as pool:
-        results = pool.map(parse_html, html_contents)
+    def _get_title(self, soup: BeautifulSoup) -> str:
+        """Extract page title."""
+        return soup.title.string if soup.title else ""
     
-    return results
-
-def validate_url(url: str) -> bool:
-    """Validate if a string is a valid URL."""
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except ValueError as e:
-        logger.error(f"Invalid URL format: {str(e)}")
-        return False
+    def _get_headings(self, soup: BeautifulSoup) -> list:
+        """Extract all headings."""
+        headings = []
+        for tag in ['h1', 'h2', 'h3']:
+            headings.extend([h.text.strip() for h in soup.find_all(tag)])
+        return headings
+    
+    def _get_main_content(self, soup: BeautifulSoup) -> str:
+        """Extract main content, focusing on article or main tags."""
+        main_content = soup.find('article') or soup.find('main') or soup.find('div', class_='content')
+        if main_content:
+            return main_content.get_text(separator='\n', strip=True)
+        return soup.get_text(separator='\n', strip=True)
+    
+    def _get_relevant_links(self, soup: BeautifulSoup) -> list:
+        """Extract relevant links (documentation, API, etc)."""
+        links = []
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            text = a.text.strip()
+            if any(keyword in href.lower() or keyword in text.lower() 
+                  for keyword in ['doc', 'api', 'guide', 'reference']):
+                links.append({
+                    'text': text,
+                    'url': href
+                })
+        return links
 
 def main():
-    """Main function to process URLs from command line."""
-    parser = argparse.ArgumentParser(description='Fetch and process multiple URLs concurrently.')
-    parser.add_argument('urls', nargs='+', help='URLs to process')
-    parser.add_argument('--max-concurrent', type=int, default=5, help='Maximum number of concurrent requests')
-    args = parser.parse_args()
-    
-    # Validate URLs
-    valid_urls = [url for url in args.urls if validate_url(url)]
-    if not valid_urls:
-        logger.error("No valid URLs provided")
+    """Main entry point for the script."""
+    if len(sys.argv) != 2:
+        print("Usage: python web_scrape.py <url>")
         sys.exit(1)
     
-    # Process URLs
-    results = asyncio.run(process_urls(valid_urls, args.max_concurrent))
+    url = sys.argv[1]
+    scraper = WebScraper()
+    result = scraper.scrape(url)
     
-    # Print results
-    for url, content in zip(valid_urls, results):
-        print(f"\n=== Content from {url} ===\n")
-        print(content)
+    # Print results in JSON format
+    print(json.dumps(result, indent=2))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main() 

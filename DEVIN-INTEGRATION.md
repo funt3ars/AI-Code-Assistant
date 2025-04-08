@@ -61,6 +61,3 @@ The system learns from your corrections and feedback, improving over time by upd
 - If the AI assistant doesn't seem to use the enhanced capabilities, restart Cursor
 - If you see Python errors, make sure all dependencies are installed with `./setup-devin.sh`
 
-## Integration with Docker Deployment
-
-The Devin-like capabilities are for development only and aren't included in the Docker deployment. They enhance how you build and maintain the application rather than being part of the production environment.

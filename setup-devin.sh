@@ -110,15 +110,22 @@ fi
 
 check_python_version
 
-# Activate virtual environment (create if it doesn't exist)
+# Create virtual environment if it doesn't exist
 if [ ! -d "devin-venv" ]; then
     echo -e "${YELLOW}Creating virtual environment...${NC}"
     python3 -m venv devin-venv
 fi
 
-# Activate the virtual environment
+# Activate virtual environment
 echo -e "${YELLOW}Activating virtual environment...${NC}"
 source devin-venv/bin/activate
+
+# Install required packages
+echo -e "${YELLOW}Installing dependencies...${NC}"
+pip install requests beautifulsoup4 duckduckgo-search python-dotenv pyjwt bcrypt
+
+# Create tools directory if it doesn't exist
+mkdir -p tools
 
 # Install dependencies with better error handling
 install_dependencies || exit 1
@@ -137,8 +144,8 @@ python -m playwright install chromium
 # Verify tools
 verify_tools || exit 1
 
-echo -e "${GREEN}Setup complete!${NC}"
-echo -e "${YELLOW}To activate the Devin environment:${NC}"
+echo -e "${GREEN}Setup completed successfully!${NC}"
+echo -e "${YELLOW}To activate the environment:${NC}"
 echo -e "    source devin-venv/bin/activate"
 echo -e "${YELLOW}To use with Cursor IDE:${NC}"
 echo -e "    1. Make sure .cursorrules is in your project root"
