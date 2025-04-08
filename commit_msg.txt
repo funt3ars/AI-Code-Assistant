@@ -1,0 +1,6 @@
+[Cursor] Fix rate limiting in web scraper
+
+- Update rate limiting logic to properly enforce request rate
+- Add rate limiting to scrape_urls for concurrent requests
+- Fix timing issues with monotonic clock
+- Update last request time after sleep

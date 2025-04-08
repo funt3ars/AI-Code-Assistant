@@ -1,0 +1,12 @@
+{
+    "llm": {
+        "provider": "invalid-provider",
+        "model": "gpt-4"
+    },
+    "web": {
+        "timeout": "not-a-number"
+    },
+    "logging": {
+        "level": "INVALID_LEVEL"
+    }
+} 
